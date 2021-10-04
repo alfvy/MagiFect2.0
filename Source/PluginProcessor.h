@@ -20,27 +20,6 @@ enum distChoices {
     Bypass
 };
 
-enum Slope
-{
-    Slope_12,
-    Slope_24,
-    Slope_36,
-    Slope_48
-};
-
-struct ChainSettings
-{
-    float lowCutFreq{ 0 }, highCutFreq{ 0 };
-    Slope lowCutSlope{ Slope::Slope_48 }, highCutSlope{ Slope::Slope_48 };
-    //bool lowCutBypassed { false }, highCutBypassed { false };
-};
-
-using Filter = juce::dsp::IIR::Filter<float>;
-
-using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
-
-using Coefficients = Filter::CoefficientsPtr;
-
 //==============================================================================
 class RealMagiVerbAudioProcessor  : public juce::AudioProcessor, public juce::AudioProcessorValueTreeState::Listener
 {
@@ -90,12 +69,6 @@ private:
     //random number generator
     juce::Random random;
 
-    //filter params
-    using Filter = juce::dsp::IIR::Filter<float>;
-    using MonoChain = juce::dsp::ProcessorChain<Filter, Filter>;
-
-    MonoChain leftChain, rightChain;
-
     //the reverb parameters
     juce::dsp::Reverb::Parameters reverbParameters;
     juce::dsp::Reverb leftReverb, rightReverb;
@@ -107,19 +80,23 @@ private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameters();
 
     //virtual function needed to be overriden
-    void parameterChanged(const juce::String& parameterID, float newValue) override;
+    void parameterChanged(const juce::String& parameterID, float newValue) override {};
 
-    enum ChainPositions
-    {
-        LowCut,
-        HighCut
-    };
-    
-    ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
+    juce::dsp::StateVariableTPTFilter<float> lowCutFilter1;
+    juce::dsp::StateVariableTPTFilter<float> lowCutFilter2;
+    juce::dsp::StateVariableTPTFilter<float> lowCutFilter3;
+    juce::dsp::StateVariableTPTFilter<float> lowCutFilter4;
 
-    void updateLowCutFilter(const ChainSettings& chainSettings);
-    void updateHighCutFilter(const ChainSettings& chainSettings);
-    void updateFilters();
+    juce::dsp::StateVariableTPTFilter<float> highCutFilter1;
+    juce::dsp::StateVariableTPTFilter<float> highCutFilter2;
+    juce::dsp::StateVariableTPTFilter<float> highCutFilter3;
+    juce::dsp::StateVariableTPTFilter<float> highCutFilter4;
+
+    void prepareFilters(juce::dsp::ProcessSpec spec);
+
+    void updateLowCutparams(float cut);
+    void updateHighCutparams(float cut);
+    void proccessFilters(juce::dsp::ProcessContextReplacing<float> context);
 
     //void updateLowCutFilter(const ChainSettings& chainSettings);
     //void updateHighCutFilter(const ChainSettings& chainSettings);

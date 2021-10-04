@@ -31,7 +31,7 @@ RealMagiVerbAudioProcessor::RealMagiVerbAudioProcessor()
     apvts.addParameterListener("Modulation Rate", this);
     apvts.addParameterListener("Modulation Amount", this);
     apvts.addParameterListener("Distortion Gain", this);
-    apvts.addParameterListener("Distortion Choice", this);
+    apvts.addParameterListener("Distortion Type", this);
     apvts.addParameterListener("Rate Divide", this);
     apvts.addParameterListener("Bit Depth", this);
     apvts.addParameterListener("Pre-Gain", this);
@@ -123,19 +123,22 @@ void RealMagiVerbAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     juce::dsp::ProcessSpec spec;
+    juce::dsp::ProcessSpec filterSpec;
 
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = 1;
 
+    filterSpec.sampleRate = sampleRate;
+    filterSpec.maximumBlockSize = samplesPerBlock;
+    filterSpec.numChannels = 2;
+
     leftReverb.prepare(spec);
     rightReverb.prepare(spec);
     leftChorus.prepare(spec);
     rightChorus.prepare(spec);  
-    leftChain.prepare(spec);
-    rightChain.prepare(spec);
 
-    updateFilters();
+    prepareFilters(filterSpec);
 }
 
 void RealMagiVerbAudioProcessor::releaseResources()
@@ -224,7 +227,7 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto rateDivide = apvts.getRawParameterValue("Rate Divide");
     auto gain       = apvts.getRawParameterValue("Distortion Gain");
 
-    distChoices choice = (distChoices)(int)apvts.getRawParameterValue("Distortion Choice")->load();
+    distChoices choice = (distChoices)(int)apvts.getRawParameterValue("Distortion Type")->load();
 
     //all the values we got from the slider, and pass them to the reverb::parameters object
     reverbParameters.roomSize     = *apvts.getRawParameterValue("Reverb Size") / 100;
@@ -244,6 +247,7 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     //make processing contexes for the left and right sample blocks
     juce::dsp::ProcessContextReplacing<float> leftContext(leftBlock);
     juce::dsp::ProcessContextReplacing<float> rightContext(rightBlock);
+    juce::dsp::ProcessContextReplacing<float> monoContext(sampleBlock);
 
     //the chorus object have self containted method to set their parameters
     {
@@ -261,6 +265,13 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
         leftChorus.process(leftContext);
         rightChorus.process(rightContext);
+    }
+
+    {
+        auto lowcut = apvts.getRawParameterValue("LowCut Frequency");
+        auto highcut = apvts.getRawParameterValue("HighCut Frequency");
+        updateLowCutparams(*lowcut);
+        updateHighCutparams(*highcut);
     }
 
     buffer.applyGain(*pre);
@@ -369,13 +380,9 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     leftReverb.process(leftContext);
     rightReverb.process(rightContext);
 
+    proccessFilters(monoContext);
+
     buffer.applyGain(*post);
-
-
-    updateFilters();
-
-    leftChain.process(leftContext);
-    rightChain.process(rightContext);
 }
 
 //==============================================================================
@@ -419,13 +426,6 @@ void RealMagiVerbAudioProcessor::reset()
     rightReverb.reset();
     leftChorus.reset();
     rightChorus.reset();
-    leftChain.reset();
-    rightChain.reset();
-}
-
-void RealMagiVerbAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue)
-{
-    
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout RealMagiVerbAudioProcessor::createParameters()
@@ -458,14 +458,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout RealMagiVerbAudioProcessor::
         juce::NormalisableRange<float>(0.0f, 100.0f, 0.01f), 0.0f));
 
     //these are the layouts of bruh sliders
-    layout.add(std::make_unique<juce::AudioParameterFloat>("LowCut Freq",
-        "LowCut Freq",
-        juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.25f),
+    layout.add(std::make_unique<juce::AudioParameterFloat>("LowCut Frequency",
+        "LowCut Frequency",
+        juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.5f),
         20.0f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("HighCut Freq",
-        "HighCut Freq",
-        juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.25f),
+    layout.add(std::make_unique<juce::AudioParameterFloat>("HighCut Frequency",
+        "HighCut Frequency",
+        juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 1.5f),
         20000.0f));
 
     //distortion layout
@@ -489,66 +489,76 @@ juce::AudioProcessorValueTreeState::ParameterLayout RealMagiVerbAudioProcessor::
 
     //array for the distortion choices
     juce::StringArray array;
-    array.add("Clipping");
-    array.add("Overdrive");
-    array.add("Guitar Amp");
-    array.add("Valve Saturation");
+    array.add("Hard Clip");
     array.add("Soft Clip");
-    array.add("Wave Shapper");
+    array.add("Over Drive");
+    array.add("AMP");
+    array.add("Saturation");
+    array.add("Wave Shaper");
     array.add("Bypass");
 
-    layout.add(std::make_unique<juce::AudioParameterChoice>("Distortion Choice", "Distortion Choice", array, 6));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("Distortion Type", "Distortion Type", array, 6));
 
     return layout;
 }
 
-ChainSettings RealMagiVerbAudioProcessor::getChainSettings(juce::AudioProcessorValueTreeState& apvts)
+void RealMagiVerbAudioProcessor::prepareFilters(juce::dsp::ProcessSpec spec)
 {
-    ChainSettings settings;
+    lowCutFilter1.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+    lowCutFilter2.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+    lowCutFilter3.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+    lowCutFilter4.setType(juce::dsp::StateVariableTPTFilterType::highpass);
 
-    settings.lowCutFreq = apvts.getRawParameterValue("LowCut Freq")->load();
-    settings.highCutFreq = apvts.getRawParameterValue("HighCut Freq")->load();
+    lowCutFilter1.prepare(spec);
+    lowCutFilter2.prepare(spec);
+    lowCutFilter3.prepare(spec);
+    lowCutFilter4.prepare(spec);
 
-    return settings;
+    highCutFilter1.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+    highCutFilter2.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+    highCutFilter3.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+    highCutFilter4.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+
+    highCutFilter1.prepare(spec);
+    highCutFilter2.prepare(spec);
+    highCutFilter3.prepare(spec);
+    highCutFilter4.prepare(spec);
 }
 
-void RealMagiVerbAudioProcessor::updateLowCutFilter(const ChainSettings& chainSettings)
+void RealMagiVerbAudioProcessor::updateLowCutparams(float cut)
 {
-    //auto lowCutCoefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), chainSettings.lowCutFreq, 1.0f);
-
-    //*leftChain.get<ChainPositions::LowCut>().coefficients = *lowCutCoefficients;
-    //*rightChain.get<ChainPositions::LowCut>().coefficients = *lowCutCoefficients;
-
-    auto lowCutCoefficients = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq,
-        getSampleRate(), 8);
-
-    //*leftChain.get<ChainPositions::LowCut>().coefficients = *lowCutCoefficients.getObjectPointer(3);
-    //*rightChain.get<ChainPositions::LowCut>().coefficients = *lowCutCoefficients.getObjectPointer(3);
-
-    *leftChain.get<ChainPositions::LowCut>().coefficients = *lowCutCoefficients.getLast();
-    *rightChain.get<ChainPositions::LowCut>().coefficients = *lowCutCoefficients.getLast();
+    lowCutFilter1.setCutoffFrequency(cut);
+    lowCutFilter2.setCutoffFrequency(cut);
+    lowCutFilter3.setCutoffFrequency(cut);
+    lowCutFilter4.setCutoffFrequency(cut);
+    lowCutFilter1.setResonance(0.99f);
+    lowCutFilter2.setResonance(0.99f);
+    lowCutFilter3.setResonance(0.99f);
+    lowCutFilter4.setResonance(0.99f);
 }
 
-void RealMagiVerbAudioProcessor::updateHighCutFilter(const ChainSettings& chainSettings)
+void RealMagiVerbAudioProcessor::updateHighCutparams(float cut)
 {
-    //auto highCutCoefficient = juce::dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), chainSettings.highCutFreq);
-
-    //*leftChain.get<ChainPositions::HighCut>().coefficients = *highCutCoefficient;
-    //*rightChain.get<ChainPositions::HighCut>().coefficients = *highCutCoefficient;
-
-    auto highCutCoefficients = juce::dsp::FilterDesign<float>::designIIRLowpassHighOrderButterworthMethod(chainSettings.highCutFreq
-     , getSampleRate(), 8);
-
-    * leftChain.get<ChainPositions::HighCut>().coefficients = *highCutCoefficients.getLast();
-    * rightChain.get<ChainPositions::HighCut>().coefficients = *highCutCoefficients.getLast();
+    highCutFilter1.setCutoffFrequency(cut);
+    highCutFilter2.setCutoffFrequency(cut);
+    highCutFilter3.setCutoffFrequency(cut);
+    highCutFilter4.setCutoffFrequency(cut);
+    highCutFilter1.setResonance(0.99f);
+    highCutFilter2.setResonance(0.99f);
+    highCutFilter3.setResonance(0.99f);
+    highCutFilter4.setResonance(0.99f);
 }
 
-void RealMagiVerbAudioProcessor::updateFilters()
+void RealMagiVerbAudioProcessor::proccessFilters(juce::dsp::ProcessContextReplacing<float> context)
 {
-    auto chainSettings = getChainSettings(apvts);
-
-    updateLowCutFilter(chainSettings);
-    updateHighCutFilter(chainSettings);
+    lowCutFilter1.process(context);
+    lowCutFilter2.process(context);
+    lowCutFilter3.process(context);
+    lowCutFilter4.process(context);
+    highCutFilter1.process(context);
+    highCutFilter2.process(context);
+    highCutFilter3.process(context);
+    highCutFilter4.process(context);
 }
 
 //==============================================================================

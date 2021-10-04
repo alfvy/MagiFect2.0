@@ -371,11 +371,11 @@ RealMagiVerbAudioProcessorEditor::RealMagiVerbAudioProcessorEditor (RealMagiVerb
         modRateSliderAtt        = std::make_unique<Attachment>(*apvts.getParameter("Modulation Rate"), modRateSlider);
         modAmountSliderAtt      = std::make_unique<Attachment>(*apvts.getParameter("Modulation Amount"), modAmountSlider);
         distGainSliderAtt       = std::make_unique<Attachment>(*apvts.getParameter("Distortion Gain"), distGainSlider);
-        distChoiceSliderAtt     = std::make_unique<Attachment>(*apvts.getParameter("Distortion Choice"), distChoiceSlider);
+        distChoiceSliderAtt     = std::make_unique<Attachment>(*apvts.getParameter("Distortion Type"), distChoiceSlider);
         rateDivSliderAtt        = std::make_unique<Attachment>(*apvts.getParameter("Rate Divide"), rateDivSlider);
         bitDepthSliderAtt       = std::make_unique<Attachment>(*apvts.getParameter("Bit Depth"), bitDepthSlider);
-        lowCutFreqSliderAtt     = std::make_unique<Attachment>(*apvts.getParameter("LowCut Freq"), lowCutFreqSlider);
-        highCutFreqSliderAtt    = std::make_unique<Attachment>(*apvts.getParameter("HighCut Freq"), highCutFreqSlider);
+        lowCutFreqSliderAtt     = std::make_unique<Attachment>(*apvts.getParameter("LowCut Frequency"), lowCutFreqSlider);
+        highCutFreqSliderAtt    = std::make_unique<Attachment>(*apvts.getParameter("HighCut Frequency"), highCutFreqSlider);
         preGainSliderAtt        = std::make_unique<Attachment>(*apvts.getParameter("Pre-Gain"), preGainSlider);
         postGainSliderAtt       = std::make_unique<Attachment>(*apvts.getParameter("Post-Gain"), postGainSlider);
         entropySlAtt            = std::make_unique<Attachment>(*apvts.getParameter("Entropy"), entropySlider);
