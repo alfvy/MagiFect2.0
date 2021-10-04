@@ -20,6 +20,24 @@ enum distChoices {
     Bypass
 };
 
+//struct for individual filters making them high order by stacking them
+struct BetterFilter
+{
+	juce::dsp::StateVariableTPTFilter<float> Filter1;
+    juce::dsp::StateVariableTPTFilter<float> Filter2;
+    juce::dsp::StateVariableTPTFilter<float> Filter3;
+    juce::dsp::StateVariableTPTFilter<float> Filter4;
+
+	BetterFilter(int type);
+
+	~BetterFilter();
+
+	void setType(int type);
+	void prepareFilter(juce::dsp::ProcessSpec spec);
+	void resetFilter();
+	void setFilterCutoff(float cut, juce::dsp::ProcessContextReplacing<float> context);
+};
+
 //==============================================================================
 class RealMagiVerbAudioProcessor  : public juce::AudioProcessor, public juce::AudioProcessorValueTreeState::Listener
 {
@@ -81,25 +99,10 @@ private:
 
     //virtual function needed to be overriden
     void parameterChanged(const juce::String& parameterID, float newValue) override {};
-
-    juce::dsp::StateVariableTPTFilter<float> lowCutFilter1;
-    juce::dsp::StateVariableTPTFilter<float> lowCutFilter2;
-    juce::dsp::StateVariableTPTFilter<float> lowCutFilter3;
-    juce::dsp::StateVariableTPTFilter<float> lowCutFilter4;
-
-    juce::dsp::StateVariableTPTFilter<float> highCutFilter1;
-    juce::dsp::StateVariableTPTFilter<float> highCutFilter2;
-    juce::dsp::StateVariableTPTFilter<float> highCutFilter3;
-    juce::dsp::StateVariableTPTFilter<float> highCutFilter4;
-
-    void prepareFilters(juce::dsp::ProcessSpec spec);
-
-    void updateLowCutparams(float cut);
-    void updateHighCutparams(float cut);
-    void proccessFilters(juce::dsp::ProcessContextReplacing<float> context);
-
-    //void updateLowCutFilter(const ChainSettings& chainSettings);
-    //void updateHighCutFilter(const ChainSettings& chainSettings);
+	
+	//independant high order filters
+	BetterFilter lowCutFilter;
+	BetterFilter highCutFilter;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RealMagiVerbAudioProcessor);

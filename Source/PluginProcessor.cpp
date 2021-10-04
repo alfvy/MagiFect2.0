@@ -22,6 +22,7 @@ RealMagiVerbAudioProcessor::RealMagiVerbAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
                        ), apvts(*this, nullptr, "Parameters", createParameters())
+                       , lowCutFilter(1), highCutFilter(2)
 #endif
 {
     apvts.addParameterListener("Reverb Size", this);
@@ -125,20 +126,21 @@ void RealMagiVerbAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     juce::dsp::ProcessSpec spec;
     juce::dsp::ProcessSpec filterSpec;
 
-    spec.sampleRate = sampleRate;
-    spec.maximumBlockSize = samplesPerBlock;
-    spec.numChannels = 1;
+    spec.sampleRate         = sampleRate;
+    spec.maximumBlockSize   = samplesPerBlock;
+    spec.numChannels        = 1;
 
-    filterSpec.sampleRate = sampleRate;
+    filterSpec.sampleRate       = sampleRate;
     filterSpec.maximumBlockSize = samplesPerBlock;
-    filterSpec.numChannels = 2;
+    filterSpec.numChannels      = 2;
 
     leftReverb.prepare(spec);
     rightReverb.prepare(spec);
     leftChorus.prepare(spec);
     rightChorus.prepare(spec);  
 
-    prepareFilters(filterSpec);
+    lowCutFilter.prepareFilter(filterSpec);
+    highCutFilter.prepareFilter(filterSpec);
 }
 
 void RealMagiVerbAudioProcessor::releaseResources()
@@ -267,12 +269,9 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         rightChorus.process(rightContext);
     }
 
-    {
-        auto lowcut = apvts.getRawParameterValue("LowCut Frequency");
-        auto highcut = apvts.getRawParameterValue("HighCut Frequency");
-        updateLowCutparams(*lowcut);
-        updateHighCutparams(*highcut);
-    }
+    //the raw values of the lowcut and highcut frequency
+    auto lowcut = apvts.getRawParameterValue("LowCut Frequency");
+    auto highcut = apvts.getRawParameterValue("HighCut Frequency");
 
     buffer.applyGain(*pre);
     for (auto channel = 0; channel < buffer.getNumChannels(); ++channel)
@@ -380,7 +379,8 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     leftReverb.process(leftContext);
     rightReverb.process(rightContext);
 
-    proccessFilters(monoContext);
+    lowCutFilter.setFilterCutoff(*lowcut, monoContext);
+    highCutFilter.setFilterCutoff(*highcut, monoContext);
 
     buffer.applyGain(*post);
 }
@@ -426,6 +426,8 @@ void RealMagiVerbAudioProcessor::reset()
     rightReverb.reset();
     leftChorus.reset();
     rightChorus.reset();
+    lowCutFilter.resetFilter();
+    highCutFilter.resetFilter();
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout RealMagiVerbAudioProcessor::createParameters()
@@ -502,63 +504,62 @@ juce::AudioProcessorValueTreeState::ParameterLayout RealMagiVerbAudioProcessor::
     return layout;
 }
 
-void RealMagiVerbAudioProcessor::prepareFilters(juce::dsp::ProcessSpec spec)
+BetterFilter::BetterFilter(int type)
 {
-    lowCutFilter1.setType(juce::dsp::StateVariableTPTFilterType::highpass);
-    lowCutFilter2.setType(juce::dsp::StateVariableTPTFilterType::highpass);
-    lowCutFilter3.setType(juce::dsp::StateVariableTPTFilterType::highpass);
-    lowCutFilter4.setType(juce::dsp::StateVariableTPTFilterType::highpass);
-
-    lowCutFilter1.prepare(spec);
-    lowCutFilter2.prepare(spec);
-    lowCutFilter3.prepare(spec);
-    lowCutFilter4.prepare(spec);
-
-    highCutFilter1.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-    highCutFilter2.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-    highCutFilter3.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-    highCutFilter4.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-
-    highCutFilter1.prepare(spec);
-    highCutFilter2.prepare(spec);
-    highCutFilter3.prepare(spec);
-    highCutFilter4.prepare(spec);
+    setType(type);
 }
 
-void RealMagiVerbAudioProcessor::updateLowCutparams(float cut)
+BetterFilter::~BetterFilter()
 {
-    lowCutFilter1.setCutoffFrequency(cut);
-    lowCutFilter2.setCutoffFrequency(cut);
-    lowCutFilter3.setCutoffFrequency(cut);
-    lowCutFilter4.setCutoffFrequency(cut);
-    lowCutFilter1.setResonance(0.99f);
-    lowCutFilter2.setResonance(0.99f);
-    lowCutFilter3.setResonance(0.99f);
-    lowCutFilter4.setResonance(0.99f);
+    
 }
 
-void RealMagiVerbAudioProcessor::updateHighCutparams(float cut)
+void BetterFilter::setType(int type)
 {
-    highCutFilter1.setCutoffFrequency(cut);
-    highCutFilter2.setCutoffFrequency(cut);
-    highCutFilter3.setCutoffFrequency(cut);
-    highCutFilter4.setCutoffFrequency(cut);
-    highCutFilter1.setResonance(0.99f);
-    highCutFilter2.setResonance(0.99f);
-    highCutFilter3.setResonance(0.99f);
-    highCutFilter4.setResonance(0.99f);
+    if(type == 1)
+    {
+        Filter1.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+        Filter2.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+        Filter3.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+        Filter4.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+    }
+
+    if(type == 2)
+    {
+        Filter1.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+        Filter2.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+        Filter3.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+        Filter4.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+    }
 }
 
-void RealMagiVerbAudioProcessor::proccessFilters(juce::dsp::ProcessContextReplacing<float> context)
+void BetterFilter::prepareFilter(juce::dsp::ProcessSpec spec)
 {
-    lowCutFilter1.process(context);
-    lowCutFilter2.process(context);
-    lowCutFilter3.process(context);
-    lowCutFilter4.process(context);
-    highCutFilter1.process(context);
-    highCutFilter2.process(context);
-    highCutFilter3.process(context);
-    highCutFilter4.process(context);
+    Filter1.prepare(spec);
+    Filter2.prepare(spec);
+    Filter3.prepare(spec);
+    Filter4.prepare(spec);
+}
+
+void BetterFilter::resetFilter()
+{
+    Filter1.reset();
+    Filter2.reset();
+    Filter3.reset();
+    Filter4.reset();
+}
+
+void BetterFilter::setFilterCutoff(float cut, juce::dsp::ProcessContextReplacing<float> context)
+{
+    Filter1.setCutoffFrequency(cut);
+    Filter2.setCutoffFrequency(cut);
+    Filter3.setCutoffFrequency(cut);
+    Filter4.setCutoffFrequency(cut);
+
+    Filter1.process(context);
+    Filter2.process(context);
+    Filter3.process(context);
+    Filter4.process(context);
 }
 
 //==============================================================================
