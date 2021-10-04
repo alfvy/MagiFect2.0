@@ -44,7 +44,7 @@ namespace ProjectInfo
 {
     const char* const  projectName    = "MagiFect";
     const char* const  companyName    = "alfy";
-    const char* const  versionString  = "2.1.6";
-    const int          versionNumber  = 0x20106;
+    const char* const  versionString  = "2.2.1";
+    const int          versionNumber  = 0x20201;
 }
 #endif
