@@ -10,6 +10,7 @@
 #include "PluginEditor.h"
 
 const float PI = 3.1415926535f;
+const float oneOverSQ2 = 1 / sqrt(2);
 
 //==============================================================================
 RealMagiVerbAudioProcessor::RealMagiVerbAudioProcessor()
@@ -298,7 +299,8 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                     }
                     else {
                         writePointer[sample] = (*gain + (randNum / 100)) *
-                            (writePointer[sample] - ((writePointer[sample] * writePointer[sample] * writePointer[sample]) / 3.f));
+                            (writePointer[sample] - ((writePointer[sample] 
+                                * writePointer[sample] * writePointer[sample]) / 3.f));
                     }
                 }
                 //overdrive
@@ -324,7 +326,8 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                         writePointer[sample] = 0.9f;
                     }
                     else {
-                        writePointer[sample] = juce::dsp::FastMathApproximations::sin((*gain + (randNum / 100)) * writePointer[sample] * (PI / 2));
+                        writePointer[sample] = juce::dsp::FastMathApproximations::sin((*gain + (randNum / 100)) 
+                            * writePointer[sample] * (PI / 2));
                     }
                 }
                 //saturation
@@ -337,18 +340,20 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                         writePointer[sample] = 0.9f;
                     }
                     else {
-                        writePointer[sample] = juce::dsp::FastMathApproximations::tanh((*gain + (randNum / 100)) * writePointer[sample]);
+                        writePointer[sample] = juce::dsp::FastMathApproximations::tanh((*gain + (randNum / 100)) 
+                            * writePointer[sample]);
                     }
                 }
                 //wave shapper
                 case 5:
                 {
-                    writePointer[sample] = (*gain + (randNum / 100)) * (writePointer[sample] + *gain * writePointer[sample] * writePointer[sample]);
+                    writePointer[sample] = (*gain + (randNum / 100)) * (writePointer[sample] + *gain 
+                        * writePointer[sample] * writePointer[sample]);
                 }
-                //simple bypass * gain
+                //simple bypass
                 case 6:
                 {
-                   writePointer[sample] =  writePointer[sample] * *gain;
+                   writePointer[sample] =  writePointer[sample];
                 }
             }
             //bit crush is always applied
@@ -472,7 +477,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout RealMagiVerbAudioProcessor::
 
     //distortion layout
     layout.add(std::make_unique<juce::AudioParameterFloat>("Pre-Gain", "Pre-Gain",
-        juce::NormalisableRange<float>(0.1f, 2.0f, 0.01f), 1.0f));
+        juce::NormalisableRange<float>(0.1f, 2.0f, 0.01f), 0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("Post-Gain", "Post-Gain",
         juce::NormalisableRange<float>(0.1f, 2.0f, 0.01f), 1.0f));
@@ -539,6 +544,11 @@ void BetterFilter::prepareFilter(juce::dsp::ProcessSpec spec)
     Filter2.prepare(spec);
     Filter3.prepare(spec);
     Filter4.prepare(spec);
+
+    Filter1.setResonance(0.99);
+    Filter2.setResonance(0.99);
+    Filter3.setResonance(0.99);
+    Filter4.setResonance(0.99);
 }
 
 void BetterFilter::resetFilter()

@@ -4,7 +4,7 @@
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
               pluginFormats="buildStandalone,buildVST,buildVST3" companyName="alfy"
               companyCopyright="alfy 2020-2021" companyWebsite="https://linktr.ee/alfy"
-              companyEmail="loka20015@gmail.com" version="2.2.1">
+              companyEmail="loka20015@gmail.com" version="2.2.3">
   <MAINGROUP id="Oq1zGw" name="MagiFect">
     <GROUP id="{0EB37212-7D30-D1B1-8753-1928B0ECA9CF}" name="Source">
       <FILE id="SfxSVQ" name="PluginProcessor.cpp" compile="1" resource="0"
