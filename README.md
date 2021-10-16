@@ -5,7 +5,7 @@ All of the pervious DSP projects that I have worked on had an element of "Magic"
 A collection of what I've been able to do using the JUCE module and per sample manipulation
 
 ## UI/UX
-![I am not a Graphic Designer](https://imgur.com/r4NSjKZ)
+![I am not a Graphic Designer](https://i.imgur.com/r4NSjKZ.png)
 
 ## Usage
 open the ProJucer file and configure your Build Enviroment
