@@ -1,11 +1,3 @@
-/*
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin editor.
-
-  ==============================================================================
-*/
-
 #pragma once
 
 #include <JuceHeader.h>
@@ -120,7 +112,6 @@ private:
     juce::Rectangle<int> preGainBounds      = { 45, 480, 70, 70 };
     juce::Rectangle<int> postGainBounds     = { 145, 480, 70, 70 };
     juce::Rectangle<int> entropyBounds      = { 290, 480, 70, 70 };
-    juce::Rectangle<int> bruhBounds         = {45, 453, 150, 32};
 
 
     // This reference is provided as a quick way for your editor to

@@ -1,11 +1,3 @@
-/*
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin processor.
-
-  ==============================================================================
-*/
-
 #pragma once
 
 #include <JuceHeader.h>
@@ -33,8 +25,8 @@ struct BetterFilter
 	~BetterFilter();
 
 	void setType(int type);
-	void prepareFilter(juce::dsp::ProcessSpec spec);
-	void resetFilter();
+	void prepare(juce::dsp::ProcessSpec spec);
+	void reset();
 	void setFilterCutoff(float cut, juce::dsp::ProcessContextReplacing<float> context);
 };
 

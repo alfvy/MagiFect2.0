@@ -1,11 +1,3 @@
-/*
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin processor.
-
-  ==============================================================================
-*/
-
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
@@ -140,8 +132,8 @@ void RealMagiVerbAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     leftChorus.prepare(spec);
     rightChorus.prepare(spec);  
 
-    lowCutFilter.prepareFilter(filterSpec);
-    highCutFilter.prepareFilter(filterSpec);
+    lowCutFilter.prepare(filterSpec);
+    highCutFilter.prepare(filterSpec);
 }
 
 void RealMagiVerbAudioProcessor::releaseResources()
@@ -219,8 +211,10 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     knowing that, that number will never surpass the limit of randomInput*/
     int randomInput = *apvts.getRawParameterValue("Entropy");
 
+    //we can't manipulate the range in nextInt() but we can in a range
     juce::Range<int> randRange = {0, randomInput};
 
+    //generate a random number between 0 and the knob value
     int randNum = random.nextInt(randRange);
 
     //all the values used in the distortion algorithms
@@ -306,43 +300,19 @@ void RealMagiVerbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                 //overdrive
                 case 2:
                 {
-                    if (writePointer[sample] < -1.f) {
-                        writePointer[sample] = -0.9f;
-                    }
-                    else if (writePointer[sample] > 1.f) {
-                        writePointer[sample] = 0.9f;
-                    }
-                    else {
-                        writePointer[sample] = mod((*gain + (randNum / 100)) * writePointer[sample] + 1, 2) - 1;
-                    }
+                    writePointer[sample] = mod((*gain + (randNum / 100)) * writePointer[sample] + 1, 2) - 1;
                 }
                 //ZAP
                 case 3:
                 {
-                    if (writePointer[sample] < -1.f) {
-                        writePointer[sample] = -0.9f;
-                    }
-                    else if (writePointer[sample] > 1.f) {
-                        writePointer[sample] = 0.9f;
-                    }
-                    else {
-                        writePointer[sample] = juce::dsp::FastMathApproximations::sin((*gain + (randNum / 100)) 
-                            * writePointer[sample] * (PI / 2));
-                    }
+                    writePointer[sample] = juce::dsp::FastMathApproximations::sin((*gain + (randNum / 100)) 
+                        * writePointer[sample] * (PI / 2));
                 }
                 //saturation
                 case 4:
                 {
-                    if (writePointer[sample] < -1.f) {
-                        writePointer[sample] = -0.9f;
-                    }
-                    else if (writePointer[sample] > 1.f) {
-                        writePointer[sample] = 0.9f;
-                    }
-                    else {
-                        writePointer[sample] = juce::dsp::FastMathApproximations::tanh((*gain + (randNum / 100)) 
-                            * writePointer[sample]);
-                    }
+                     writePointer[sample] = juce::dsp::FastMathApproximations::tanh((*gain + (randNum / 100)) 
+                        * writePointer[sample]);
                 }
                 //wave shapper
                 case 5:
@@ -431,8 +401,8 @@ void RealMagiVerbAudioProcessor::reset()
     rightReverb.reset();
     leftChorus.reset();
     rightChorus.reset();
-    lowCutFilter.resetFilter();
-    highCutFilter.resetFilter();
+    lowCutFilter.reset();
+    highCutFilter.reset();
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout RealMagiVerbAudioProcessor::createParameters()
@@ -538,20 +508,20 @@ void BetterFilter::setType(int type)
     }
 }
 
-void BetterFilter::prepareFilter(juce::dsp::ProcessSpec spec)
+void BetterFilter::prepare(juce::dsp::ProcessSpec spec)
 {
     Filter1.prepare(spec);
     Filter2.prepare(spec);
     Filter3.prepare(spec);
     Filter4.prepare(spec);
 
-    Filter1.setResonance(0.99);
-    Filter2.setResonance(0.99);
-    Filter3.setResonance(0.99);
-    Filter4.setResonance(0.99);
+    Filter1.setResonance(0.99f);
+    Filter2.setResonance(0.99f);
+    Filter3.setResonance(0.99f);
+    Filter4.setResonance(0.99f);
 }
 
-void BetterFilter::resetFilter()
+void BetterFilter::reset()
 {
     Filter1.reset();
     Filter2.reset();

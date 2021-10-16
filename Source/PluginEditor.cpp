@@ -1,11 +1,3 @@
-/*
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin editor.
-
-  ==============================================================================
-*/
-
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
@@ -94,7 +86,7 @@ juce::String LookAndFeel::getDisplayString(juce::Slider& slider)
             }
             break;
         }
-            //break;
+    
         case false:
         {
             str = juce::String(val, (addK ? 2 : 0));
@@ -159,7 +151,8 @@ void LookAndFeel::drawRotarySlider(juce::Graphics& g, float rotaryStartAngle, fl
         p.addEllipse(r);
 
         //getting the rotation from the slider
-        float sliderPosProportional = juce::jmap(slider.getValue(), slider.getRange().getStart(), slider.getRange().getEnd(), 0.0, 1.0);
+        float sliderPosProportional = juce::jmap(slider.getValue(), 
+            slider.getRange().getStart(), slider.getRange().getEnd(), 0.0, 1.0);
 
         jassert(startAngle < endAngle);
 
@@ -419,7 +412,7 @@ void RealMagiVerbAudioProcessorEditor::paint (juce::Graphics& g)
     {
         juce::Path reverbRectPath, modRectPath, distRectPath, filterRectPath;
 
-        juce::Rectangle<float> reverbRect   = {30, 30, 200, 200};
+        juce::Rectangle<float> reverbRect   = { 30, 30, 200, 200 };
         juce::Rectangle<float> modRect      = { 270, 30, 110, 200 };
         juce::Rectangle<float> distRect     = { 30, 270, 200, 200 };
         juce::Rectangle<float> filterRect   = { 270, 270, 110, 200 };
