@@ -13,14 +13,14 @@ open the ProJucer file and configure your Build Enviroment
 ## Support
 hit me up with an e-mail :
 loke20015@gmail.com
-or discord DM:
+\nor discord DM:
 alfy#2440
 
 ## Roadmap
-No current roadman has been set up other than making it run good and look good
+No current roadmap has been set up other than making it run good and look good
 
 ## Contributing
-NYD
+do your thing
 
 ## Authors and acknowledgment
 Thanks to all the Juce people, and the Audio Programmer Discord people too
